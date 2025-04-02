@@ -11,16 +11,11 @@ services:
       - SERVICE_FQDN_GAMESERVER_8080 # Tell Coolify to generate FQDN and proxy to internal port 8080
     volumes:
       - ${DATA_PATH}:/gameserver/data
-    # labels: # Remove manual labels
-    #   - traefik.enable=true
-    #   - traefik.http.routers.gameserver-proxy.rule=Host(`hcosw804gkcwcg408cks4k0g.mciut.fr`)
-    #   - traefik.http.routers.gameserver-proxy.entrypoints=https
-    #   - traefik.http.routers.gameserver-proxy.tls=true
-    #   - traefik.http.routers.gameserver-proxy.tls.certresolver=letsencrypt # Assuming default cert resolver name
-    #   - traefik.http.routers.gameserver-proxy.service=gameserver-svc
-    #   - traefik.http.services.gameserver-svc.loadbalancer.server.port=8080 # Internal container port
-    # ports:
-    #  - "${PORT}:${PORT}"
+    labels:
+      - traefik.http.services.gameserver-raw.loadbalancer.server.port=8080
+      - "traefik.http.routers.gameserver-raw.rule=Host(`hcosw804gkcwcg408cks4k0g.mciut.fr`)"
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:${PORT:-8080}/"] # Check if the server responds on the root path
       interval: 30s # Check every 30 seconds
