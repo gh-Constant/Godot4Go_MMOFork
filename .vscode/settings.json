@@ -1,0 +1,11 @@
+{
+    "protoc": {
+        "path": "protoc",
+        "compile_on_save": true,
+        "options": [
+            "-I=c:\\Users\\saltytaro\\Desktop\\RadiusRumble\\shared",
+            "--go_out=server",
+        ]
+    },
+    "godotTools.editorPath.godot4": "/Users/constantsuchet/Godot4Go_MMO/client/main.gd"
+}
