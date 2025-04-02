@@ -8,6 +8,7 @@ services:
     environment:
       - PORT=${PORT:-8080} # Define PORT, configurable in Coolify UI, default 8080
       - DATA_PATH=${DATA_PATH:-./data} # Define DATA_PATH, configurable in Coolify UI, default ./data
+      - SERVICE_FQDN_GAMESERVER_8080 # Tell Coolify to generate FQDN and proxy to internal port 8080
     volumes:
       - ${DATA_PATH}:/gameserver/data
     ports:
