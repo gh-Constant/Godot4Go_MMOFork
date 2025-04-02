@@ -24,12 +24,7 @@ func main() {
 	// Simple handler for all paths
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Simple Handler: Received %s request for %s", r.Method, r.URL.Path)
-		_, err := fmt.Fprintf(w, "Server is running!\n") // Respond with simple text
-		if err != nil {
-			log.Printf("Simple Handler: ERROR writing response: %v", err)
-		} else {
-			log.Printf("Simple Handler: Successfully wrote response for %s", r.URL.Path)
-		}
+		fmt.Fprintf(w, "Server is running!\n") // Respond with simple text
 	})
 
 	log.Printf("Starting SIMPLE server on %s", addr)
