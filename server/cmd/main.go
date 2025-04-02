@@ -12,7 +12,7 @@ func main() {
 	// Basic port configuration directly from ENV
 	portStr := os.Getenv("PORT")
 	if portStr == "" {
-		portStr = "8080" // Default if not set
+		portStr = "8081" // Default if not set
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
