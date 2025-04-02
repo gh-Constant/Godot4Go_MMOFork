@@ -19,3 +19,10 @@ services:
       timeout: 10s # Wait 10 seconds for response
       retries: 3 # Try 3 times before marking as unhealthy
       start_period: 60s # Wait 60 seconds after start before first check
+    networks: # Explicitly connect to the coolify network for the proxy
+      - coolify
+
+# Define the coolify network as external (created by Coolify)
+networks:
+  coolify:
+    external: true
