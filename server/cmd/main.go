@@ -101,16 +101,40 @@ func main() {
 	// Define the game hub
 	hub := server.NewHub(cfg.DataPath)
 
+	// Add a simple status handler to fix 404 errors
+	statusHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Status Handler: Received %s request for path '%s' from %s", 
+			r.Method, r.URL.Path, r.RemoteAddr)
+		
+		// Set content type and status
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		
+		// Write response
+		fmt.Fprintf(w, "Server is running!\n")
+		fmt.Fprintf(w, "Path: %s\n", r.URL.Path)
+		fmt.Fprintf(w, "Method: %s\n", r.Method)
+		fmt.Fprintf(w, "Remote Address: %s\n", r.RemoteAddr)
+	})
+
 	// Define handler for serving the HTML5 export
 	exportPath := coalescePaths(cfg.ClientPath, filepath.Join(cfg.DataPath, "html5"))
 	if _, err := os.Stat(exportPath); err != nil {
-		if !os.IsNotExist(err) {
-			log.Fatalf("Error checking for HTML export: %v", err)
+		if os.IsNotExist(err) {
+			log.Printf("WARNING: HTML5 export directory not found at %s. Serving status page at root path '/'", exportPath)
+			// If export directory doesn't exist, use our status handler instead
+			http.Handle("/", statusHandler)
+		} else {
+			log.Printf("ERROR: Could not access HTML5 export path %s: %v", exportPath, err)
+			http.Handle("/", statusHandler)
 		}
 	} else {
 		log.Printf("Serving HTML5 export from %s", exportPath)
 		http.Handle("/", addHeaders(http.StripPrefix("/", http.FileServer(http.Dir(exportPath)))))
 	}
+
+	// Add a simple status endpoint that won't interfere with other handlers
+	http.Handle("/status", statusHandler)
 
 	// Define handler for WebSocket connections
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +145,7 @@ func main() {
 	addr := fmt.Sprintf(":%d", cfg.Port)
 
 	log.Printf("Starting server on %s", addr)
+	log.Printf("Status page available at /status")
 
 	// cfg.CertPath = resolveLiveCertsPath(cfg.CertPath)
 	// cfg.KeyPath = resolveLiveCertsPath(cfg.KeyPath)
