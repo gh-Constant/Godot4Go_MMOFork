@@ -13,3 +13,9 @@ services:
       - ${DATA_PATH}:/gameserver/data
     # ports:
     #  - "${PORT}:${PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:${PORT:-8080}/"] # Check if the server responds on the root path
+      interval: 30s # Check every 30 seconds
+      timeout: 10s # Wait 10 seconds for response
+      retries: 3 # Try 3 times before marking as unhealthy
+      start_period: 60s # Wait 60 seconds after start before first check
