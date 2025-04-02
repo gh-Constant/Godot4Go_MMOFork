@@ -11,6 +11,7 @@ import (
 	"server/internal/server/clients"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -30,7 +31,7 @@ type config struct {
 }
 
 var (
-	defaultConfig = &config{Port: 8080}
+	defaultConfig = &config{Port: 8081}
 	configPath    = flag.String("config", ".env", "Path to the config file")
 )
 
@@ -101,19 +102,62 @@ func main() {
 	// Define the game hub
 	hub := server.NewHub(cfg.DataPath)
 
+	// Add a simple status handler to fix 404 errors
+	statusHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Log request details including important headers
+		log.Printf("Status Handler: Received %s request for path '%s' from %s", 
+			r.Method, r.URL.Path, r.RemoteAddr)
+		log.Printf("Headers: Proto=%s, X-Forwarded-Proto=%s, Host=%s, X-Forwarded-Host=%s",
+			r.Proto, r.Header.Get("X-Forwarded-Proto"), r.Host, r.Header.Get("X-Forwarded-Host"))
+		
+		// Set content type and status
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		w.WriteHeader(http.StatusOK)
+		
+		// Write response
+		fmt.Fprintf(w, "Server is running!\n")
+		fmt.Fprintf(w, "Path: %s\n", r.URL.Path)
+		fmt.Fprintf(w, "Method: %s\n", r.Method)
+		fmt.Fprintf(w, "Protocol: %s\n", r.Proto)
+		fmt.Fprintf(w, "Host: %s\n", r.Host)
+		fmt.Fprintf(w, "X-Forwarded-Proto: %s\n", r.Header.Get("X-Forwarded-Proto"))
+		fmt.Fprintf(w, "X-Forwarded-Host: %s\n", r.Header.Get("X-Forwarded-Host"))
+		fmt.Fprintf(w, "Remote Address: %s\n", r.RemoteAddr)
+	})
+
 	// Define handler for serving the HTML5 export
 	exportPath := coalescePaths(cfg.ClientPath, filepath.Join(cfg.DataPath, "html5"))
 	if _, err := os.Stat(exportPath); err != nil {
-		if !os.IsNotExist(err) {
-			log.Fatalf("Error checking for HTML export: %v", err)
+		if os.IsNotExist(err) {
+			log.Printf("WARNING: HTML5 export directory not found at %s. Serving status page at root path '/'", exportPath)
+			// If export directory doesn't exist, use our status handler instead
+			http.Handle("/", statusHandler)
+		} else {
+			log.Printf("ERROR: Could not access HTML5 export path %s: %v", exportPath, err)
+			http.Handle("/", statusHandler)
 		}
 	} else {
 		log.Printf("Serving HTML5 export from %s", exportPath)
 		http.Handle("/", addHeaders(http.StripPrefix("/", http.FileServer(http.Dir(exportPath)))))
 	}
 
+	// Add a simple status endpoint that won't interfere with other handlers
+	http.Handle("/status", statusHandler)
+
+	// Add a dedicated health check endpoint for the proxy
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "OK")
+	})
+
 	// Define handler for WebSocket connections
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("WebSocket request received from %s, Proto=%s, X-Forwarded-Proto=%s",
+			r.RemoteAddr, r.Proto, r.Header.Get("X-Forwarded-Proto"))
 		hub.Serve(clients.NewWebSocketClient, w, r)
 	})
 
@@ -121,28 +165,49 @@ func main() {
 	addr := fmt.Sprintf(":%d", cfg.Port)
 
 	log.Printf("Starting server on %s", addr)
+	log.Printf("Status page available at /status")
 
-	// cfg.CertPath = resolveLiveCertsPath(cfg.CertPath)
-	// cfg.KeyPath = resolveLiveCertsPath(cfg.KeyPath)
+	// Create a more robust server
+	server := &http.Server{
+		Addr:    addr,
+		Handler: nil, // Use the default ServeMux
+		// Add reasonable timeouts
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
-	// log.Printf("Using cert at %s and key at %s", cfg.CertPath, cfg.KeyPath)
-
-	// err = http.ListenAndServeTLS(addr, cfg.CertPath, cfg.KeyPath, nil)
-
-	// if err != nil {
-		log.Println("Starting server without TLS (forced)")
-		err = http.ListenAndServe(addr, nil)
-		if err != nil {
-			log.Fatalf("Failed to start server without TLS: %v", err)
-		// }
+	// Start the server
+	log.Println("Starting server without TLS (behind proxy)")
+	err = server.ListenAndServe()
+	if err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
 
 // Add headers required for the HTML5 export to work with threads
 func addHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		
+		// Export-specific headers
 		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
 		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+		
+		// Cache control
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		
+		// Handle OPTIONS requests specially
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		
 		next.ServeHTTP(w, r)
 	})
 }

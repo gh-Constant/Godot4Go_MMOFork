@@ -3,9 +3,31 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - .env
+    # env_file:
+    #   - .env
+    environment:
+      - PORT=8081 # Force port to 8081, don't allow override
+      - DATA_PATH=${DATA_PATH:-./data} # Define DATA_PATH, configurable in Coolify UI, default ./data
+      - SERVICE_FQDN_GAMESERVER_8081 # Tell Coolify to generate FQDN and proxy to internal port 8081
     volumes:
       - ${DATA_PATH}:/gameserver/data
+    labels:
+      - traefik.http.services.gameserver-raw.loadbalancer.server.port=8081
+      - "traefik.http.routers.gameserver-raw.rule=Host(`hcosw804gkcwcg408cks4k0g.mciut.fr`)"
+      - "traefik.http.middlewares.gameserver-custom.headers.customResponseHeaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.gameserver-raw.middlewares=gameserver-custom@docker"
     ports:
-      - "${PORT}:${PORT}"
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8081/"] # Fixed port to 8081
+      interval: 30s # Check every 30 seconds
+      timeout: 10s # Wait 10 seconds for response
+      retries: 3 # Try 3 times before marking as unhealthy
+      start_period: 60s # Wait 60 seconds after start before first check
+    networks: # Explicitly connect to the coolify network for the proxy
+      - coolify
+
+# Define the coolify network as external (created by Coolify)
+networks:
+  coolify:
+    external: true
