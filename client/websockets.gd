@@ -68,9 +68,6 @@ func poll() -> void:
 		if state == socket.STATE_OPEN:
 			connected_to_server.emit()
 		elif state == socket.STATE_CLOSED:
-			var close_code := socket.get_close_code()
-			var close_reason := socket.get_close_reason()
-			print("WebSocket connection closed! Code: %s, Reason: '%s'" % [close_code, close_reason])
 			connection_closed.emit()
 	while socket.get_ready_state() == socket.STATE_OPEN and socket.get_available_packet_count():
 		packet_received.emit(get_packet())

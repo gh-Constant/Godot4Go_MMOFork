@@ -10,7 +10,7 @@ func _ready() -> void:
 	WS.packet_received.connect(_on_ws_packet_received)
 	
 	_log.info("Connecting to server...")
-	WS.connect_to_url("wss://sgk80sokgw4ss8ggg4sosgkw.chronosync.constantsuchet.fr/ws", null)
+	WS.connect_to_url("wss://sgk80sokgw4ss8ggg4sosgkw.chronosync.constantsuchet.fr:8081/ws", TLSOptions.client())
 	
 func _on_ws_connected_to_server() -> void:
 	_log.success("Connected successfully")
