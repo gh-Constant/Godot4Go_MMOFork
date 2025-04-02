@@ -11,5 +11,5 @@ services:
       - SERVICE_FQDN_GAMESERVER_8080 # Tell Coolify to generate FQDN and proxy to internal port 8080
     volumes:
       - ${DATA_PATH}:/gameserver/data
-    ports:
-      - "${PORT}:${PORT}"
+    # ports:
+    #  - "${PORT}:${PORT}"
