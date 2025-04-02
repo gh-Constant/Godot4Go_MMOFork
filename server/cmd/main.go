@@ -104,8 +104,11 @@ func main() {
 	// Define handler for serving the HTML5 export
 	exportPath := coalescePaths(cfg.ClientPath, filepath.Join(cfg.DataPath, "html5"))
 	if _, err := os.Stat(exportPath); err != nil {
-		if !os.IsNotExist(err) {
-			log.Fatalf("Error checking for HTML export: %v", err)
+		if os.IsNotExist(err) {
+			log.Printf("WARNING: HTML5 export directory not found at %s. Root path '/' will not be served.", exportPath)
+		} else {
+			// Log other errors related to accessing the path, but don't exit
+			log.Printf("ERROR: Could not access HTML5 export path %s: %v", exportPath, err)
 		}
 	} else {
 		log.Printf("Serving HTML5 export from %s", exportPath)
