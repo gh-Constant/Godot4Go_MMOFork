@@ -6,7 +6,7 @@ services:
     # env_file:
     #   - .env
     environment:
-      - PORT=${PORT:-8081} # Define PORT, configurable in Coolify UI, default 8081
+      - PORT=8081 # Force port to 8081, don't allow override
       - DATA_PATH=${DATA_PATH:-./data} # Define DATA_PATH, configurable in Coolify UI, default ./data
       - SERVICE_FQDN_GAMESERVER_8081 # Tell Coolify to generate FQDN and proxy to internal port 8081
     volumes:
@@ -15,9 +15,9 @@ services:
       - traefik.http.services.gameserver-raw.loadbalancer.server.port=8081
       - "traefik.http.routers.gameserver-raw.rule=Host(`hcosw804gkcwcg408cks4k0g.mciut.fr`)"
     ports:
-      - "${PORT:-8081}:${PORT:-8081}"
+      - "8081:8081"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:${PORT:-8081}/"] # Check if the server responds on the root path
+      test: ["CMD", "curl", "--fail", "http://localhost:8081/"] # Fixed port to 8081
       interval: 30s # Check every 30 seconds
       timeout: 10s # Wait 10 seconds for response
       retries: 3 # Try 3 times before marking as unhealthy
