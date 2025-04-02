@@ -109,7 +109,13 @@ func main() {
 		}
 	} else {
 		log.Printf("Serving HTML5 export from %s", exportPath)
-		http.Handle("/", addHeaders(http.StripPrefix("/", http.FileServer(http.Dir(exportPath)))))
+		// Add logging to the file server handler
+		fileServerHandler := http.StripPrefix("/", http.FileServer(http.Dir(exportPath)))
+		loggedFileServerHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Printf("HTTP Request: Method=%s Host=%s Path=%s RemoteAddr=%s", r.Method, r.Host, r.URL.Path, r.RemoteAddr)
+			fileServerHandler.ServeHTTP(w, r)
+		})
+		http.Handle("/", addHeaders(loggedFileServerHandler)) // Use the logged handler
 	}
 
 	// Define handler for WebSocket connections
